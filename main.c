@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <czmq.h>
 
+<<<<<<< HEAD
 
 static zpoller_t *poller_req;
 static zpoller_t *poller_res;
@@ -49,5 +50,19 @@ int main (void)
     zmq_close (responder);
     zmq_ctx_destroy (responder_context);
 
+=======
+#include "plugin/plugin_task.h"
+
+
+int main (void)
+{
+    
+    if (plugin_task_init()) {
+        return -1;
+    }
+
+    pthread_join(plugin_task_handle_get(), NULL);
+    
+>>>>>>> develop
     return 0;
 }
