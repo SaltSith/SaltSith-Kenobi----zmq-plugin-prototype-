@@ -123,16 +123,20 @@ plugin_task_init(void)
 {
     int result = -1;
 
-    result = plugin_sockets_init(REQUESTER_ADDR, RESPONDER_ADDR);
-    if (result) {
-        return result;
+    if (plugin_socket_init(REQUESTER, REQUESTER_ADDR)) {
+        return -1;
     }
 
-    result = plugin_task_queue_init();
-    printf("plugin_task_queue_init %d\r\n", errno);
-    if (result == -1) {
-        return result;
+    if (plugin_socket_init(RESPONDER, RESPONDER_ADDR)) {
+        return -2;
     }
+
+
+    // result = plugin_task_queue_init();
+    // printf("plugin_task_queue_init %d\r\n", errno);
+    // if (result == -1) {
+    //     return result;
+    // }
 
     result = pthread_create(&plugin_task_handle,
                             NULL,
