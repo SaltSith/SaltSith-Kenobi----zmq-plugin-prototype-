@@ -90,3 +90,17 @@ void plugin_socket_loop(void)
         zmq_send (plugin_ctx[RESPONDER].socket, "ACK", strlen("ACK"), 0);
     }
 }
+
+void plugin_socket_send_message(const char *message, const int len)
+{
+    if (message == NULL) {
+        return;
+    }
+
+    zmq_send (plugin_ctx[REQUESTER].socket, message, len, 0);
+}
+
+void *socket_socket_get(const socket_type_t plugin_socket)
+{
+    return plugin_ctx[plugin_socket].socket;
+}

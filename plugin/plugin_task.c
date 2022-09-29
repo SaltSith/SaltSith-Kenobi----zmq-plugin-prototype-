@@ -9,9 +9,17 @@
 #include <stdio.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <string.h>
+
+#include <zmq.h>
+#include <czmq.h>
 
 
 #define PLUGIN_TASK_QUEUE_NAME  "/plugin_kenobi2"
+
+#define POLL_TIMEOUT_DEFAULT    (50)
+#define POLL_TIMEOUT_INFINITY   (-1)
+#define POLL_TIMEOUT            POLL_TIMEOUT_DEFAULT
 
 typedef enum {
     PLUGIN_EVENT_SEND_MESSAGE = 0,
@@ -26,6 +34,8 @@ typedef struct {
 static bool plugin_ready;
 static pthread_t plugin_task_handle;
 static int plugin_task_queue = -1;
+
+static zmq_pollitem_t items[3];
 
 
 typedef void(*plugin_task_event_handler)(void *args);
@@ -67,12 +77,40 @@ plugin_task_pop_message(void)
     }
 }
 
+static void plugin_task_check_queues(void)
+{
+    if (items[0].revents & ZMQ_POLLIN) {
+        items[0].revents &= ~ZMQ_POLLIN;
+
+        printf("Data is available on plugin task queue.\r\n");
+        plugin_task_pop_message();
+    }
+
+    if (items[1].revents & ZMQ_POLLIN) {
+        items[1].revents &= ~ZMQ_POLLIN;
+
+        char buffer [100];
+        memset(buffer, '\0', sizeof(buffer));
+        zmq_recv(socket_socket_get(REQUESTER), buffer, 100, 0);
+        printf("Received ack message %10s \r\n", buffer);
+    }
+
+    if (items[2].revents & ZMQ_POLLIN) {
+        items[2].revents &= ~ZMQ_POLLIN;
+
+        char buffer[100];
+        zmq_recv(socket_socket_get(RESPONDER), buffer, 100, 0);
+        printf("Received request: %10s\r\n", buffer);
+        zmq_send(socket_socket_get(RESPONDER), "ACK", strlen("ACK"), 0);
+    }
+}
+
 static void 
 *plugin_task(void *arg)
 {
-
     int result;
     fd_set rfds;
+
     FD_ZERO(&rfds);
     FD_SET(plugin_task_queue, &rfds);
 
@@ -80,19 +118,27 @@ static void
 
     plugin_ready = true;
 
+    plugin_socket_send_message("Kenobi wakeup\r\n", strlen("Kenobi wakeup\r\n"));
+
+    items[0].socket = NULL;
+    items[0].fd = plugin_task_queue;
+    items[0].events = ZMQ_POLLIN;
+
+    items[1].socket = socket_socket_get(REQUESTER);
+    items[1].events = ZMQ_POLLIN;
+
+    items[2].socket = socket_socket_get(RESPONDER);
+    items[2].events = ZMQ_POLLIN;
+
     while (1) {
-        plugin_socket_loop();
+        int rc = zmq_poll(items, sizeof(items) / sizeof(items[0]), POLL_TIMEOUT);
 
-        result = select(plugin_task_queue + 1, &rfds, NULL, NULL, NULL);
-
-        if (result == -1) {
-            printf("Error on select.\r\n");
-        } else if (result) {
-            printf("Data is available on plugin task queue.\r\n");
-            plugin_task_pop_message();
-        } else {
-            printf("No data within given timeout.\r\n");
+        if (rc > 0) {
+            plugin_task_check_queues();
         }
+
+        printf("-------------------Plugin task loop--------------\r\n");
+        sleep(1);
     }
     
     pthread_cleanup_pop(NULL);
@@ -121,7 +167,6 @@ plugin_task_queue_init(void)
 int
 plugin_task_init(void)
 {
-    int result = -1;
 
     if (plugin_socket_init(REQUESTER, REQUESTER_ADDR)) {
         return -1;
@@ -131,12 +176,11 @@ plugin_task_init(void)
         return -2;
     }
 
+    int result = plugin_task_queue_init();
 
-    // result = plugin_task_queue_init();
-    // printf("plugin_task_queue_init %d\r\n", errno);
-    // if (result == -1) {
-    //     return result;
-    // }
+    if (result == -1) {
+        return result;
+    }
 
     result = pthread_create(&plugin_task_handle,
                             NULL,
@@ -157,14 +201,15 @@ void
 plugin_task_cleanup_handler(void *arg)
 {
     mq_unlink(PLUGIN_TASK_QUEUE_NAME);
+
     plugin_sockets_destroy();
 }
 
-void
+bool
 plugin_task_send_msg(void *msg)
 {
     if (msg == NULL) {
-        return;
+        return false;
     }
 
     plugin_task_event_t event = {
