@@ -16,4 +16,4 @@ void plugin_socket_loop(void);
 
 void plugin_socket_send_message(const char *message, const int len);
 
-void *socket_socket_get(const socket_type_t plugin_socket);
+void *plugin_socket_get(const socket_type_t plugin_socket);

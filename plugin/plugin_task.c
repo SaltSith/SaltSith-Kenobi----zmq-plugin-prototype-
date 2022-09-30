@@ -1,6 +1,6 @@
 #include "plugin_task.h"
 
-#include "plugin.h"
+#include "plugin_socket.h"
 
 #include "../config.h"
 
@@ -43,7 +43,7 @@ typedef void(*plugin_task_event_handler)(void *args);
 static void plugin_task_event_handler_send_msg(void *args);
 
 plugin_task_event_handler plugin_task_event_handlers[PLUGIN_EVENT_LAST] = {
-        plugin_task_event_handler_send_msg,
+    plugin_task_event_handler_send_msg,
 };
 
 static void
@@ -61,16 +61,16 @@ static int plugin_task_queue_init(void);
 static void
 plugin_task_pop_message(void)
 {
-    int result;
     unsigned int msg_prio;
 
     plugin_task_event_t event;
+
     int msg_len = sizeof(plugin_task_event_t);
 
-    result = mq_receive(plugin_task_queue,
-                        (char *)&event,
-                        msg_len,
-                        &msg_prio);
+    int result = mq_receive(plugin_task_queue,
+                            (char *)&event,
+                            msg_len,
+                            &msg_prio);
 
     if (result > 0) {
         plugin_task_event_handlers[event.event](event.args);
@@ -91,7 +91,7 @@ static void plugin_task_check_queues(void)
 
         char buffer [100];
         memset(buffer, '\0', sizeof(buffer));
-        zmq_recv(socket_socket_get(REQUESTER), buffer, 100, 0);
+        zmq_recv(plugin_socket_get(REQUESTER), buffer, 100, 0);
         printf("Received ack message %10s \r\n", buffer);
         if (memcmp(buffer, "Grevovius wakeup\r\n", strlen("Grevovius wakeup\r\n")) == 0) {
             printf("------ REINIT------------\r\n");
@@ -103,16 +103,15 @@ static void plugin_task_check_queues(void)
         items[2].revents &= ~ZMQ_POLLIN;
 
         char buffer[100];
-        zmq_recv(socket_socket_get(RESPONDER), buffer, 100, 0);
+        zmq_recv(plugin_socket_get(RESPONDER), buffer, 100, 0);
         printf("Received request: %10s\r\n", buffer);
-        zmq_send(socket_socket_get(RESPONDER), "ACK", strlen("ACK"), 0);
+        zmq_send(plugin_socket_get(RESPONDER), "ACK", strlen("ACK"), 0);
     }
 }
 
 static void 
 *plugin_task(void *arg)
 {
-    int result;
     fd_set rfds;
 
     FD_ZERO(&rfds);
@@ -125,13 +124,13 @@ static void
     plugin_socket_send_message("Kenobi wakeup\r\n", strlen("Kenobi wakeup\r\n"));
 
     items[0].socket = NULL;
-    items[0].fd = plugin_task_queue;
+    items[0].fd     = plugin_task_queue;
     items[0].events = ZMQ_POLLIN;
 
-    items[1].socket = socket_socket_get(REQUESTER);
+    items[1].socket = plugin_socket_get(REQUESTER);
     items[1].events = ZMQ_POLLIN;
 
-    items[2].socket = socket_socket_get(RESPONDER);
+    items[2].socket = plugin_socket_get(RESPONDER);
     items[2].events = ZMQ_POLLIN;
 
     while (1) {
@@ -142,7 +141,6 @@ static void
         }
 
         printf("-------------------Plugin task loop--------------\r\n");
-        sleep(1);
     }
     
     pthread_cleanup_pop(NULL);
@@ -155,14 +153,14 @@ plugin_task_queue_init(void)
 {
     struct mq_attr attr;
 
-    attr.mq_flags = 0;
-    attr.mq_maxmsg = 10;
+    attr.mq_flags   = 0;
+    attr.mq_maxmsg  = 10;
     attr.mq_msgsize = sizeof(plugin_task_event_t);
     attr.mq_curmsgs = 0;
 
     plugin_task_queue = mq_open(PLUGIN_TASK_QUEUE_NAME,
-                                O_CREAT | /*O_EXCL |*/ O_NONBLOCK | O_RDWR,
-                                0777,//S_IRUSR | S_IWUSR,
+                                O_CREAT | O_NONBLOCK | O_RDWR,
+                                0777,
                                 &attr);
 
     return plugin_task_queue;
@@ -217,7 +215,7 @@ plugin_task_send_msg(void *msg)
     }
 
     plugin_task_event_t event = {
-        .args = msg,
+        .args  = msg,
         .event = PLUGIN_EVENT_SEND_MESSAGE
     };
 

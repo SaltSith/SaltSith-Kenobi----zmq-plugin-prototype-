@@ -1,4 +1,4 @@
-#include "plugin.h"
+#include "plugin_socket.h"
 
 #include <czmq.h>
 #include <zmq.h>
@@ -100,7 +100,7 @@ void plugin_socket_send_message(const char *message, const int len)
     zmq_send (plugin_ctx[REQUESTER].socket, message, len, 0);
 }
 
-void *socket_socket_get(const socket_type_t plugin_socket)
+void *plugin_socket_get(const socket_type_t plugin_socket)
 {
     return plugin_ctx[plugin_socket].socket;
 }

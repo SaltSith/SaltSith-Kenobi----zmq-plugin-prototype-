@@ -1,1 +1,1 @@
-add_library(plugin plugin.c plugin.h plugin_task.h plugin_task.c)
+add_library(plugin plugin_socket.c plugin_socket.h plugin_task.h plugin_task.c)
