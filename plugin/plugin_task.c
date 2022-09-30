@@ -93,7 +93,7 @@ static void plugin_task_check_queues(void)
         memset(buffer, '\0', sizeof(buffer));
         zmq_recv(plugin_socket_get(REQUESTER), buffer, 100, 0);
         printf("Received ack message %10s \r\n", buffer);
-        if (memcmp(buffer, "Grevovius wakeup\r\n", strlen("Grevovius wakeup\r\n")) == 0) {
+        if (memcmp(buffer, wakeup_message, strlen(wakeup_message)) == 0) {
             printf("------ REINIT------------\r\n");
             plugin_socket_reinit(REQUESTER, REQUESTER_ADDR);
         }
@@ -121,7 +121,7 @@ static void
 
     plugin_ready = true;
 
-    plugin_socket_send_message("Kenobi wakeup\r\n", strlen("Kenobi wakeup\r\n"));
+    plugin_socket_send_message(wakeup_message, strlen(wakeup_message));
 
     items[0].socket = NULL;
     items[0].fd     = plugin_task_queue;
