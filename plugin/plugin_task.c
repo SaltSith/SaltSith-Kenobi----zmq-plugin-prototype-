@@ -93,6 +93,10 @@ static void plugin_task_check_queues(void)
         memset(buffer, '\0', sizeof(buffer));
         zmq_recv(socket_socket_get(REQUESTER), buffer, 100, 0);
         printf("Received ack message %10s \r\n", buffer);
+        if (memcmp(buffer, "Grevovius wakeup\r\n", strlen("Grevovius wakeup\r\n")) == 0) {
+            printf("------ REINIT------------\r\n");
+            plugin_socket_reinit(REQUESTER, REQUESTER_ADDR);
+        }
     }
 
     if (items[2].revents & ZMQ_POLLIN) {
