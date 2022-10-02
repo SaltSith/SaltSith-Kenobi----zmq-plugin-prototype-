@@ -10,8 +10,12 @@ add_executable(${CMAKE_PROJECT_NAME} main.c)
 add_subdirectory(plugin)
 target_link_libraries(${CMAKE_PROJECT_NAME} plugin)
 
+add_subdirectory(plugin/plugin_socket)
+target_link_libraries(${CMAKE_PROJECT_NAME} plugin_socket)
+
 target_link_libraries(${CMAKE_PROJECT_NAME} rt)
 target_link_libraries(${CMAKE_PROJECT_NAME} pthread)
 
 target_link_libraries(${CMAKE_PROJECT_NAME} czmq)
 target_link_libraries(${CMAKE_PROJECT_NAME} zmq)
+
