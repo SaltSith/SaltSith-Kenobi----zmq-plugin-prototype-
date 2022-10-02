@@ -3,3 +3,7 @@ mkdir build
 cd build
 cmake ..
 make
+
+ctest
+./test_plugin_socket
+./test_plugin_task

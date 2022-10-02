@@ -27,12 +27,12 @@ int plugin_socket_init(const socket_role_t role, const char *addr)
 
     plugin_ctx.socket_context = zmq_ctx_new();
     if (plugin_ctx.socket_context == NULL) {
-        return -1;
+        return -2;
     }
 
     plugin_ctx.socket = zmq_socket(plugin_ctx.socket_context, ZMQ_PAIR);
     if (plugin_ctx.socket == NULL) {
-        return -2;
+        return -3;
     }
 
     int result = -1;
@@ -44,34 +44,35 @@ int plugin_socket_init(const socket_role_t role, const char *addr)
     }
 
     if (result) {
-    	return -3;
+    	return -4;
     }
 
     plugin_ctx.socket_poller = zpoller_new(plugin_ctx.socket, NULL);
 
     if (plugin_ctx.socket_poller == NULL) {
-        return -4;
+        return -5;
     }
 
     return 0;
 }
 
-void plugin_socket_destroy(void)
+int plugin_socket_destroy(void)
 {
-    zmq_close(plugin_ctx.socket);
-    zmq_ctx_destroy(plugin_ctx.socket_context);
+    int result = zmq_close(plugin_ctx.socket);
+
+    result += zmq_ctx_destroy(plugin_ctx.socket_context);
     zpoller_destroy((zpoller_t **)&plugin_ctx.socket_poller);
+
+    return result;
 }
 
-void plugin_socket_send_message(const char *message, const int len)
+int plugin_socket_send_message(const char *message, const int len)
 {
     if (message == NULL) {
-        return;
+        return -1;
     }
 
-    int result = zmq_send (plugin_ctx.socket, message, len, ZMQ_DONTWAIT);
-
-    (void)result;
+    return zmq_send (plugin_ctx.socket, message, len, ZMQ_DONTWAIT);
 }
 
 void *plugin_socket_get(void)
