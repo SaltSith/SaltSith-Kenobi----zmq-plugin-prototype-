@@ -37,7 +37,7 @@ static bool plugin_ready;
 static pthread_t plugin_task_handle;
 static int plugin_task_queue = -1;
 
-static zmq_pollitem_t items[3];
+static zmq_pollitem_t items[2];
 
 
 typedef void(*plugin_task_event_handler)(void *args);
@@ -83,18 +83,22 @@ static void
     items[0].fd     = plugin_task_queue;
     items[0].events = ZMQ_POLLIN;
 
-    items[1].socket = plugin_socket_get(REQUESTER);
+    items[1].socket = plugin_socket_get();
     items[1].events = ZMQ_POLLIN;
 
-    items[2].socket = plugin_socket_get(RESPONDER);
-    items[2].events = ZMQ_POLLIN;
-
     while (1) {
-        int rc = zmq_poll(items, sizeof(items) / sizeof(items[0]), POLL_TIMEOUT);
+    	int rc;
+    	do {
+			rc = zmq_poll(items, sizeof(items) / sizeof(items[0]), POLL_TIMEOUT);
 
-        if (rc > 0) {
-            plugin_task_check_queues();
-        }
+			if (rc > 0) {
+				plugin_task_check_queues();
+			}
+    	} while(rc > 0);
+
+		plugin_socket_send_message ("Kenobi Req\0", strlen("Kenobi Req\0"));
+
+		sleep(1);
 
         printf("-------------------Plugin task loop--------------\r\n");
     }
@@ -137,21 +141,18 @@ plugin_task_check_queues(void)
 
         char buffer [100];
         memset(buffer, '\0', sizeof(buffer));
-        zmq_recv(plugin_socket_get(REQUESTER), buffer, 100, 0);
-        printf("Received ack message %10s \r\n", buffer);
-        if (memcmp(buffer, wakeup_message, strlen(wakeup_message)) == 0) {
-            printf("------ REINIT------------\r\n");
-            plugin_socket_reinit(REQUESTER, REQUESTER_ADDR);
-        }
-    }
+        zmq_recv(plugin_socket_get(), buffer, 100, ZMQ_DONTWAIT);
+        printf("GET: %s \r\n", buffer);
 
-    if (items[2].revents & ZMQ_POLLIN) {
-        items[2].revents &= ~ZMQ_POLLIN;
+		if (memcmp(buffer, wakeup_message, strlen(wakeup_message)) == 0) {
+			printf("------ PARTNER RESTART------------\r\n");
+		}
 
-        char buffer[100];
-        zmq_recv(plugin_socket_get(RESPONDER), buffer, 100, 0);
-        printf("Received request: %10s\r\n", buffer);
-        zmq_send(plugin_socket_get(RESPONDER), "ACK", strlen("ACK"), 0);
+		if (memcmp(buffer, "ACK\0", strlen("ACK\0")) == 0) {
+
+		} else {
+			plugin_socket_send_message ("ACK\0", strlen("ACK\0"));
+		}
     }
 }
 
@@ -178,12 +179,8 @@ int
 plugin_task_init(void)
 {
 
-    if (plugin_socket_init(REQUESTER, REQUESTER_ADDR)) {
+    if (plugin_socket_init(PLUGIN_ROLE, PLUGIN_ADDR)) {
         return -1;
-    }
-
-    if (plugin_socket_init(RESPONDER, RESPONDER_ADDR)) {
-        return -2;
     }
 
     int result = plugin_task_queue_init();
@@ -212,7 +209,7 @@ plugin_task_cleanup_handler(void *arg)
 {
     mq_unlink(PLUGIN_TASK_QUEUE_NAME);
 
-    plugin_sockets_destroy();
+    plugin_socket_destroy();
 }
 
 bool

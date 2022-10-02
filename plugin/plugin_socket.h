@@ -3,17 +3,13 @@
 typedef enum {
     REQUESTER = 0,
     RESPONDER,
-    SOCKET_TYPE_LAST,
-} socket_type_t;
+    SOCKET_ROLE_LAST,
+} socket_role_t;
 
-int plugin_socket_init(const socket_type_t plugin_socket, const char *addr);
+int plugin_socket_init(const socket_role_t role, const char *addr);
 
-void plugin_sockets_destroy(void);
-
-int plugin_socket_reinit(const socket_type_t plugin_socket, const char *addr);
-
-void plugin_socket_loop(void);
+void plugin_socket_destroy(void);
 
 void plugin_socket_send_message(const char *message, const int len);
 
-void *plugin_socket_get(const socket_type_t plugin_socket);
+void *plugin_socket_get(void);
