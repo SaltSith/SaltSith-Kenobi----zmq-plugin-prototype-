@@ -19,3 +19,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME} pthread)
 target_link_libraries(${CMAKE_PROJECT_NAME} czmq)
 target_link_libraries(${CMAKE_PROJECT_NAME} zmq)
 
+# testing 
+enable_testing()
+add_executable(test_plugin_socket plugin/plugin_socket/test/test.c)
+target_link_libraries(test_plugin_socket plugin_socket)
+target_link_libraries(test_plugin_socket czmq)
+target_link_libraries(test_plugin_socket zmq)
+add_test(NAME test_plugin_socket COMMAND test_plugin_socket)
