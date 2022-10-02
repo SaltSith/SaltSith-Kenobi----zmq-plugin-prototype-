@@ -1,1 +1,0 @@
-add_library(plugin_socket plugin_socket.c plugin_socket.h)
