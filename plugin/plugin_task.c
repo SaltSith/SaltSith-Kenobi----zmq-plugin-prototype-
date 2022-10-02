@@ -1,6 +1,6 @@
 #include "plugin_task.h"
 
-#include "plugin_socket.h"
+#include "plugin_socket/plugin_socket.h"
 
 #include "../config.h"
 
