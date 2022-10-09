@@ -8,3 +8,5 @@
 #define PLUGIN_ROLE RESPONDER
 
 #define wakeup_message "Arised\r\n"
+
+#define kenobi_task_QUEUE_NAME "kenobi_queue"
